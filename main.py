@@ -79,6 +79,10 @@ class Player:
         self.frame = 0
         self.frame_timer = 0
 
+        #  無敵状態用
+        self.state = "normal"  # 通常状態=normal
+        self.muteki_life = 0
+
     @property
     def rect(self):
         # しゃがんだら高さを小さくする
@@ -112,25 +116,52 @@ class Player:
             self.frame_timer = 0
             self.frame = (self.frame + 1) % 4
 
-    def draw(self, surf):
+        #無敵状態
+        if self.state == "muteki":
+            self.muteki_life -=1
+            if self.muteki_life <= 0:  # lifeが0ならそのまま
+                self.state = "normal"
+
+    def draw(self,surf):
         r = self.rect
 
-
-        surf.blit(self.image, (self.x,self.y - self.height // 2 - 35))
-
-        # 自転車本体（四角＋丸の簡易描画）
-        #bike_body = pygame.Rect(r.x, r.y + 10, r.width, r.height - 10)
-        #pygame.draw.rect(surf, self.color, bike_body, border_radius=6)
-        # 車輪
-        #wheel_radius = 10
-        ##pygame.draw.circle(surf, BLACK, (r.x + 12, r.y + r.height), wheel_radius)
-        #pygame.draw.circle(surf, BLACK, (r.x + r.width - 12, r.y + r.height), wheel_radius)
-
-        # 目押しヒント：ジャンプ状態を少し変化表示
-        #if not self.on_ground:
-         #   pygame.draw.rect(surf, (255,255,255), (r.x + r.width//2 - 4, r.y + 6, 8, 8))
-        # 自転車本体（四角＋丸の簡易描画）
+        # surf.blit(self.image, (self.x,self.y - self.height // 2 - 35))
         
+
+    # def draw(self, surf):
+    #     r = self.rect
+    #     # 自転車本体（四角＋丸の簡易描画）
+    #     bike_body = pygame.Rect(r.x, r.y + 10, r.width, r.height - 10)
+    #     pygame.draw.rect(surf, self.color, bike_body, border_radius=6)
+    #     # 車輪
+    #     wheel_radius = 10
+    #     pygame.draw.circle(surf, BLACK, (r.x + 12, r.y + r.height), wheel_radius)
+    #     pygame.draw.circle(surf, BLACK, (r.x + r.width - 12, r.y + r.height), wheel_radius)
+
+    #     # 目押しヒント：ジャンプ状態を少し変化表示
+    #     if not self.on_ground:
+    #         pygame.draw.rect(surf, (255,255,255), (r.x + r.width//2 - 4, r.y + 6, 8, 8))
+        
+        # #  無敵状態
+        # if self.state == "muteki":
+        #     self.image
+        # self.muteki_life -= 1
+        # if self.muteki_life <= 0:
+        #     self.state = "normal"
+        # SCREEN.blit(self.image,self.rect)
+
+        # 無敵状態中点滅
+        color = self.color
+        if self.state == "muteki" and (pygame.time.get_ticks() // 100)% 2 ==0:  # 秒数決めた
+            return
+        
+        surf.blit(self.image,(self.x,self.y-self.height//2-35))
+            # color = (255,255,255)  # 白く点滅
+
+        # bike_body = pygame.Rect(r.x, r.y +10, r.width, r.height -10)
+        # pygame.draw.rect(surf, color, bike_body,border_radius=6)
+
+
 
 
 # ----------------------------
@@ -196,6 +227,7 @@ class Ground:
         # 先頭タイルが画面左外に行ったら末尾に移動
         if self.tiles and self.tiles[0].right < 0:
             first = self.tiles.pop(0)
+            first.x = self.tiles[-1].right
             first.x = self.tiles[-1].right 
             self.tiles.append(first)
 
@@ -281,6 +313,14 @@ def game_loop():
                     pygame.quit()
                     sys.exit()
 
+                
+                #無敵状態
+                if event.key == pygame.K_RSHIFT:  # 右シフトを押したら
+                    if score >= 20 and player.state != "muteki":  # スコアが20かつ通常状態で発動
+                        score -= 20  # 一回無敵を使ったらスコアを0にする
+                        player.state = "muteki"
+                        player.muteki_life = 500
+
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_DOWN:
                     player.ducking = False
@@ -308,10 +348,19 @@ def game_loop():
             # 当たり判定：障害物
             for ob in obstacles:
                 if player.rect.colliderect(ob.rect):
-                    game_over = True
-                    player.alive = False
+
+                    if player.state != "muteki":  # もし無敵状態でなかったら
+                        game_over = True
+                        player.alive = False
+                    #     if 
+                    # game_over = True
+                    # player.alive = False
                     if HIT_SOUND:
                         HIT_SOUND.play()
+                    # game_over = True
+                    # player.alive = False
+                    # if HIT_SOUND:
+                    #     HIT_SOUND.play()
                     pygame.mixer.music.stop()
                     break
 
@@ -368,6 +417,7 @@ def game_loop():
             SCREEN.blit(overlay, (0,0))
             draw_text(SCREEN, "GAME OVER", WIDTH//2 - 120, HEIGHT//2 - 60, BIG_FONT, (255,180,0))
             draw_text(SCREEN, f"距離: {int(distance)}m  スコア: {score}", WIDTH//2 - 180, HEIGHT//2, FONT, (255,255,255))
+           # draw_text(SCREEN, "Rでリスタート / ESCで終了", WIDTH//2 - 140, HEIGHT//2 + 40, FONT, (200,200,200))
             draw_text(SCREEN, "Rでホーム画面 / ESCで終了", WIDTH//2 - 140, HEIGHT//2 + 40, FONT, (200,200,200))
 
         pygame.display.flip()
