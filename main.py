@@ -1,6 +1,9 @@
+import os
 import pygame
 import random
 import sys
+
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 # ----------------------------
 # 設定
